@@ -1,4 +1,4 @@
-# Tellia — Voice Note Transcription Service
+# Tellia — Tasks
 
 A modular FastAPI backend that accepts voice-note metadata, downloads the audio file, transcribes it using OpenAI Whisper (with a mock fallback), and returns the transcript.
 
