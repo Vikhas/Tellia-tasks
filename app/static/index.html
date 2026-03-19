@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tellia — Voice Note Transcription</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --accent: #06b6d4;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated Background Gradients */
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            animation: float 20s infinite alternate ease-in-out;
+        }
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: rgba(139, 92, 246, 0.4);
+            top: -10%;
+            left: -10%;
+        }
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: rgba(6, 182, 212, 0.3);
+            bottom: -20%;
+            right: -10%;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, 50px) scale(1.1); }
+            100% { transform: translate(-30px, 80px) scale(0.9); }
+        }
+
+        /* Glassmorphism Container */
+        .container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 540px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUp {
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #c084fc, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            font-size: 1.05rem;
+        }
+
+        /* Drag & Drop Zone */
+        .drop-zone {
+            border: 2px dashed rgba(139, 92, 246, 0.5);
+            border-radius: 16px;
+            padding: 40px 20px;
+            margin-bottom: 24px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(139, 92, 246, 0.03);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(6, 182, 212, 0.05);
+            transform: scale(1.02);
+        }
+
+        .drop-zone svg {
+            width: 48px;
+            height: 48px;
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 1.5;
+            margin-bottom: 16px;
+            transition: transform 0.3s;
+        }
+
+        .drop-zone:hover svg {
+            transform: translateY(-5px);
+            stroke: var(--accent);
+        }
+
+        .drop-zone-text {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .drop-zone-subtext {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Buttons & Interactions */
+        button.btn {
+            background: linear-gradient(135deg, var(--primary), #6d28d9);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+        }
+
+        button.btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6);
+        }
+
+        button.btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        button.btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: #475569;
+            box-shadow: none;
+        }
+
+        /* Loading State */
+        .loader-wrapper {
+            display: none;
+            margin-top: 24px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-text {
+            color: var(--accent);
+            font-weight: 500;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Result Display */
+        .result-container {
+            display: none;
+            margin-top: 24px;
+            text-align: left;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .transcript-box {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--text-main);
+        }
+
+        .audio-player {
+            margin-top: 16px;
+            width: 100%;
+            height: 40px;
+        }
+        
+        .audio-player::-webkit-media-controls-panel {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        /* Error Box */
+        .error-message {
+            display: none;
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            font-size: 0.9rem;
+        }
+
+        /* Approach Toggle */
+        .approach-toggle {
+            margin-bottom: 24px;
+            text-align: left;
+        }
+        .approach-toggle label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        .approach-toggle select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .json-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #22d3ee;
+            white-space: pre-wrap;
+            text-align: left;
+            margin-top: 8px;
+            overflow-x: auto;
+        }
+
+        /* History Section */
+        .history-section {
+            margin-top: 40px;
+            text-align: left;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 24px;
+        }
+        .history-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .history-card-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .history-card-body {
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+            font-weight: 600;
+            width: 100%;
+        }
+        .btn-outline:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <div class="container">
+        <h1>Transcribe Audio</h1>
+        <p class="subtitle">Upload your voice note for instant, powerful AI transcription.</p>
+
+        <form id="uploadForm">
+            <div class="drop-zone" id="dropZone">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <div class="drop-zone-text" id="fileNameDisp">Drag & Drop audio file here</div>
+                <div class="drop-zone-subtext">or click to browse from your device</div>
+                <input type="file" id="audioInput" accept="audio/*">
+            </div>
+
+            <div class="approach-toggle">
+                <label for="approachSelect">Extraction Approach:</label>
+                <select id="approachSelect">
+                    <option value="predefined">Predefined Schema (Tasks, Notes, etc.)</option>
+                    <option value="dynamic">Dynamic Schema (AI auto-generates)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn" disabled>Transcribe & Structure</button>
+        </form>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="loader-wrapper" id="loader">
+            <div class="spinner"></div>
+            <div class="status-text">Processing your audio...</div>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-label">Transcription Result</div>
+            <div class="transcript-box" id="transcriptText"></div>
+            
+            <div class="result-label" style="margin-top: 24px;">Structured JSON Data</div>
+            <pre class="json-box" id="jsonText"></pre>
+
+            <audio controls class="audio-player" id="audioPlayer" style="display: none;"></audio>
+        </div>
+
+        <div class="history-section">
+            <button class="btn-outline" id="loadHistoryBtn">View Saved Notes (History)</button>
+            <div id="historyList"></div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('audioInput');
+        const fileNameDisp = document.getElementById('fileNameDisp');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        
+        const loader = document.getElementById('loader');
+        const resultContainer = document.getElementById('resultContainer');
+        const transcriptText = document.getElementById('transcriptText');
+        const errorMessage = document.getElementById('errorMessage');
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        let selectedFile = null;
+
+        // Drag & Drop Events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                handleFile(this.files[0]);
+            }
+        });
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('audio/')) {
+                showError("Please select a valid audio file.");
+                return;
+            }
+            selectedFile = file;
+            fileNameDisp.textContent = file.name;
+            fileNameDisp.style.color = "var(--primary)";
+            submitBtn.disabled = false;
+            hideError();
+        }
+
+        // Form Submit
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedFile) return;
+
+            // UI State updates
+            submitBtn.style.display = 'none';
+            dropZone.style.display = 'none';
+            loader.style.display = 'block';
+            resultContainer.style.display = 'none';
+            hideError();
+
+            const approach = document.getElementById('approachSelect').value;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('deviceId', 'web-browser');
+            formData.append('timestamp', new Date().toISOString());
+            formData.append('structuringApproach', approach);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || data.error || 'Transcription failed');
+                }
+
+                // Show Success
+                loader.style.display = 'none';
+                resultContainer.style.display = 'block';
+                transcriptText.textContent = data.transcript;
+                document.getElementById('jsonText').textContent = JSON.stringify(data.structuredData, null, 2);
+
+                // Set up local playback
+                const objectUrl = URL.createObjectURL(selectedFile);
+                audioPlayer.src = objectUrl;
+                audioPlayer.style.display = 'block';
+
+            } catch (err) {
+                // Show Error
+                loader.style.display = 'none';
+                submitBtn.style.display = 'block';
+                dropZone.style.display = 'block';
+                showError(err.message);
+            }
+        });
+
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        // History Setup
+        const loadHistoryBtn = document.getElementById('loadHistoryBtn');
+        const historyList = document.getElementById('historyList');
+
+        async function deleteNote(noteId) {
+            if (!confirm("Are you sure you want to permanently delete this voice note?")) return;
+            try {
+                const res = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadHistoryBtn.click(); // reload list
+                } else {
+                    alert("Failed to delete the note from the database.");
+                }
+            } catch (err) {
+                alert("Error communicating with the server to delete the note.");
+            }
+        }
+
+        loadHistoryBtn.addEventListener('click', async () => {
+            try {
+                historyList.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Loading database...</p>';
+                const res = await fetch('/api/notes');
+                const data = await res.json();
+                
+                if (!data.notes || data.notes.length === 0) {
+                    historyList.innerHTML = '<p style="color:var(--text-muted); text-align:center;">No saved notes found.</p>';
+                    return;
+                }
+
+                historyList.innerHTML = '';
+                data.notes.forEach(note => {
+                    const card = document.createElement('div');
+                    card.className = 'history-card';
+                    
+                    const dateObj = new Date(note.timestamp);
+                    const dateStr = isNaN(dateObj) ? note.timestamp : dateObj.toLocaleString();
+
+                    let structHtml = '';
+                    if (note.structured_data) {
+                         structHtml = `<pre class="json-box" style="margin-top: 12px;">${JSON.stringify(note.structured_data, null, 2)}</pre>`;
+                    }
+
+                    let conflictHtml = '';
+                    if (note.conflict_id) {
+                        conflictHtml = `
+                            <div style="background: rgba(239, 68, 68, 0.15); border-left: 4px solid #ef4444; padding: 12px; margin-top: 12px; border-radius: 4px;">
+                                <strong style="color: #fca5a5;">⚠️ Semantic Conflict Detected (ID: ${note.conflict_id.substring(0,8)})</strong>
+                                <p style="color: #fecaca; font-size: 0.85rem; margin-top: 4px; margin-bottom: 0;">${note.conflict_reasoning}</p>
+                            </div>
+                        `;
+                    }
+
+                    // We ensure the audio path uses the mounted static endpoint we just added
+                    // if it's already "audio_files/xxx", prepending a leading slash is fine.
+                    const fixedAudioPath = note.audio_path.startsWith('/') ? note.audio_path : '/' + note.audio_path;
+
+                    card.innerHTML = `
+                        <div class="history-card-header">
+                            <div>
+                                <span>📱 ${note.device_id}</span>
+                                <span style="margin-left: 12px;">${dateStr}</span>
+                            </div>
+                            <button onclick="deleteNote(${note.id})" title="Delete Note" style="background:transparent; border:none; cursor:pointer; font-size: 1.1rem; transition: 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">🗑️</button>
+                        </div>
+                        <div class="history-card-body">
+                            <p style="margin-bottom:8px;"><strong>Transcript:</strong> ${note.transcript}</p>
+                            ${conflictHtml}
+                            ${structHtml}
+                            <audio controls src="${fixedAudioPath}" style="width:100%; height:32px; margin-top:12px; border-radius:16px;"></audio>
+                        </div>
+                    `;
+                    historyList.appendChild(card);
+                });
+            } catch (err) {
+                historyList.innerHTML = `<p style="color:#fca5a5;">Failed to load history.</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
